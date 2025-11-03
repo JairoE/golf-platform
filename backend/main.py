@@ -1,24 +1,38 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
+import os
 import httpx
 from bs4 import BeautifulSoup
 
 app = FastAPI(title="Golf Platform API")
 
-# CORS middleware
-import os
-allowed_origins = [
-    "http://localhost:3000",
-    os.getenv("FRONTEND_URL", ""),
+# CORS configuration
+# Prefer explicit ALLOWED_ORIGINS (comma-separated). FRONTEND_URL kept for backward compatibility.
+raw_allowed: str = os.getenv("ALLOWED_ORIGINS", "").strip()
+fallback_frontend: str = os.getenv("FRONTEND_URL", "").strip()
+
+allowed_origins: List[str] = [
+    origin.strip()
+    for origin in (raw_allowed.split(",") if raw_allowed else [])
+    if origin.strip()
 ]
-# Filter out empty strings
-allowed_origins = [origin for origin in allowed_origins if origin]
+
+# Always allow local Next.js dev by default
+if "http://localhost:3000" not in allowed_origins:
+    allowed_origins.append("http://localhost:3000")
+
+# Back-compat single value
+if fallback_frontend and fallback_frontend not in allowed_origins:
+    allowed_origins.append(fallback_frontend)
+
+allowed_origin_regex = os.getenv("ALLOWED_ORIGIN_REGEX", "").strip() or None
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=allowed_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
