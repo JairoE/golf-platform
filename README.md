@@ -91,3 +91,52 @@ golf-platform/
 
 Currently configured courses:
 - **bethpage**: https://foreupsoftware.com/index.php/booking/19765/2431#teetimes
+
+## GitHub Pages Deployment
+
+The frontend can be deployed to GitHub Pages as a static site.
+
+### Prerequisites
+
+1. Enable GitHub Pages in your repository settings (Settings → Pages)
+2. Select GitHub Actions as the source
+3. Host your backend API somewhere accessible (e.g., Railway, Render, Heroku)
+
+### Deployment Steps
+
+1. **Set up environment variables** in GitHub repository secrets:
+   - `API_URL`: Your backend API URL (e.g., `https://your-backend.railway.app`)
+
+2. **Build and test locally**:
+   ```bash
+   # Set API URL (optional, defaults to http://localhost:8000)
+   export NEXT_PUBLIC_API_URL=https://your-backend-url.com
+   yarn build
+   ```
+   The static files will be in the `out/` directory.
+
+3. **Push to main branch**:
+   The GitHub Actions workflow will automatically build and deploy to GitHub Pages.
+
+4. **Update backend CORS**:
+   Make sure your backend allows your GitHub Pages domain:
+   ```bash
+   export FRONTEND_URL=https://your-username.github.io
+   ```
+
+### Manual Build for GitHub Pages
+
+If deploying manually:
+
+```bash
+# For repository subdirectory (username.github.io/repo-name)
+export NEXT_PUBLIC_BASE_PATH=/repo-name
+export NEXT_PUBLIC_API_URL=https://your-backend-url.com
+yarn build
+# Then upload the 'out' folder contents to GitHub Pages
+```
+
+### Environment Variables
+
+- `NEXT_PUBLIC_API_URL`: Backend API URL (default: `http://localhost:8000`)
+- `NEXT_PUBLIC_BASE_PATH`: Base path for GitHub Pages subdirectory deployment (e.g., `/repo-name`)

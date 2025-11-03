@@ -8,9 +8,17 @@ from bs4 import BeautifulSoup
 app = FastAPI(title="Golf Platform API")
 
 # CORS middleware
+import os
+allowed_origins = [
+    "http://localhost:3000",
+    os.getenv("FRONTEND_URL", ""),
+]
+# Filter out empty strings
+allowed_origins = [origin for origin in allowed_origins if origin]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,6 +41,7 @@ def read_root():
 async def get_tee_times(course_name: str, request: TeeTimeRequest):
     """
     Fetch tee times for a given course URL
+    TODO: Implement actual tee time extraction logic with Playwright
     """
     try:
         async with httpx.AsyncClient() as client:
