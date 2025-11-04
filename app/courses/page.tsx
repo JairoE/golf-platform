@@ -1,8 +1,9 @@
 "use client";
 
-import {useEffect, useState} from "react";
-import {useRouter} from "next/navigation";
+import {useEffect, useMemo, useState} from "react";
+import {useRouter, useSearchParams} from "next/navigation";
 import styled from "@emotion/styled";
+import {getCityById, cities} from "@/lib/courses";
 
 const CoursesContainer = styled.div`
   min-height: 100vh;
@@ -115,21 +116,28 @@ interface TeeTimeData {
 
 export default function CoursesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [teeTimes, setTeeTimes] = useState<Record<string, TeeTimeData>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // TODO: Move this to database or s3 bucket or some other persistent storage
-  const courses: Record<string, string> = {
-    bethpage:
-      "https://foreupsoftware.com/index.php/booking/19765/2431#teetimes",
-    // marine_park: "https://marineparkridepp.ezlinksgolf.com/index.html#/search",
-  };
+  const city = useMemo(
+    () => getCityById(searchParams?.get("city") || "nyc"),
+    [searchParams]
+  );
+  const courses: Record<string, string> = useMemo(() => {
+    const map: Record<string, string> = {};
+    const courseMap = city?.courses ?? cities.nyc.courses;
+    for (const [key, c] of Object.entries(courseMap)) {
+      map[key] = c.url;
+    }
+    return map;
+  }, [city]);
 
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isLoggedIn");
     if (!isLoggedIn) {
-      router.push("/login");
+      router.push("/home?login=true");
     }
   }, [router]);
 

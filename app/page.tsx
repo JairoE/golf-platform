@@ -1,18 +1,8 @@
 "use client";
 
-import {useEffect} from "react";
-import {useRouter} from "next/navigation";
+// Render the Home UI directly on the root route
+import HomePage from "./home/page";
 
-export default function Home() {
-  const router = useRouter();
-
-  useEffect(() => {
-    // Check if user is logged in
-    const isLoggedIn = localStorage.getItem("isLoggedIn");
-    if (!isLoggedIn) {
-      router.push("/login");
-    }
-  }, [router]);
-
-  return null;
+export default function Root() {
+  return <HomePage />;
 }
