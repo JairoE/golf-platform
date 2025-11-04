@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import styled from '@emotion/styled'
 import Link from 'next/link'
+import { states } from '../data/courses'
 
 const HomeContainer = styled.div`
   min-height: 100vh;
@@ -58,18 +59,29 @@ const WelcomeCard = styled.div`
   margin-bottom: 2rem;
 `
 
-const CourseLink = styled(Link)`
-  display: inline-block;
-  padding: 1rem 2rem;
+const StatesGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+`
+
+const StateLink = styled(Link)`
+  display: block;
+  padding: 1.5rem;
   background: #667eea;
   color: white;
   text-decoration: none;
-  border-radius: 4px;
+  border-radius: 8px;
   font-size: 1.125rem;
-  transition: background 0.2s;
+  font-weight: 500;
+  text-align: center;
+  transition: background 0.2s, transform 0.2s;
   
   &:hover {
     background: #5568d3;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   }
 `
 
@@ -102,8 +114,14 @@ export default function HomePage() {
       <Content>
         <WelcomeCard>
           <h2>Welcome, {username || 'User'}!</h2>
-          <p>Browse available golf courses and book your tee times.</p>
-          <CourseLink href="/courses">Available Courses</CourseLink>
+          <p>Select a state to view available golf courses and book your tee times.</p>
+          <StatesGrid>
+            {states.map((state) => (
+              <StateLink key={state.code} href={`/states/${state.code}`}>
+                {state.name}
+              </StateLink>
+            ))}
+          </StatesGrid>
         </WelcomeCard>
       </Content>
     </HomeContainer>
