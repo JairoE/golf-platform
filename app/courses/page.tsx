@@ -3,7 +3,7 @@
 import {useEffect, useMemo, useState} from "react";
 import {useRouter, useSearchParams} from "next/navigation";
 import styled from "@emotion/styled";
-import {getCityById, cities} from "@/lib/courses";
+import {getStateById, states} from "@/lib/courses";
 
 const CoursesContainer = styled.div`
   min-height: 100vh;
@@ -121,18 +121,19 @@ export default function CoursesPage() {
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const city = useMemo(
-    () => getCityById(searchParams?.get("city") || "nyc"),
-    [searchParams]
-  );
+  const state = useMemo(() => {
+    const stateParam = searchParams?.get("state");
+    return getStateById(stateParam || "ny");
+  }, [searchParams]);
+
   const courses: Record<string, string> = useMemo(() => {
     const map: Record<string, string> = {};
-    const courseMap = city?.courses ?? cities.nyc.courses;
+    const courseMap = state?.courses ?? states.ny.courses;
     for (const [key, c] of Object.entries(courseMap)) {
       map[key] = c.url;
     }
     return map;
-  }, [city]);
+  }, [state]);
 
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isLoggedIn");
@@ -142,13 +143,18 @@ export default function CoursesPage() {
   }, [router]);
 
   const fetchTeeTime = async (courseName: string, courseUrl: string) => {
+    console.log("fetchTeeTime called", {courseName, courseUrl});
     setLoading((prev) => ({...prev, [courseName]: true}));
     setErrors((prev) => ({...prev, [courseName]: ""}));
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    console.log("API URL:", apiUrl);
 
     try {
-      const response = await fetch(`${apiUrl}/api/tee-times/${courseName}`, {
+      const requestUrl = `${apiUrl}/api/tee-times/${courseName}`;
+      console.log("Making request to:", requestUrl);
+
+      const response = await fetch(requestUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -156,16 +162,22 @@ export default function CoursesPage() {
         body: JSON.stringify({url: courseUrl}),
       });
 
+      console.log("Response status:", response.status);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Response error:", errorText);
         throw new Error(`Failed to fetch tee times: ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log("Tee time data received:", data);
       setTeeTimes((prev) => ({
         ...prev,
         [courseName]: {course: courseName, url: courseUrl, data},
       }));
     } catch (error) {
+      console.error("Error fetching tee times:", error);
       setErrors((prev) => ({
         ...prev,
         [courseName]:
@@ -181,18 +193,24 @@ export default function CoursesPage() {
       <Header>
         <HeaderContent>
           <Title>Available Courses</Title>
-          <BackButton onClick={() => router.push("/home")}>
-            Back to Home
-          </BackButton>
+          <BackButton onClick={() => router.push("/")}>Back to Home</BackButton>
         </HeaderContent>
       </Header>
       <Content>
+        {Object.entries(courses).length === 0 && (
+          <p>No courses available. Please check the state selection.</p>
+        )}
         {Object.entries(courses).map(([courseName, courseUrl]) => (
           <CourseCard key={courseName}>
             <CourseName>{courseName.replace("_", " ")}</CourseName>
             <TeeTimeButton
-              onClick={() => fetchTeeTime(courseName, courseUrl)}
+              onClick={(e) => {
+                e.preventDefault();
+                console.log("Button clicked for:", courseName);
+                fetchTeeTime(courseName, courseUrl);
+              }}
               disabled={loading[courseName]}
+              type="button"
             >
               {loading[courseName] ? "Loading..." : "Get Tee Times"}
             </TeeTimeButton>

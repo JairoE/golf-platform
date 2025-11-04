@@ -111,6 +111,8 @@ export default function LoginModal({ open, onClose, onSuccess }: LoginModalProps
       localStorage.setItem('isLoggedIn', 'true')
       localStorage.setItem('username', username)
       setLoading(false)
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new Event('localStorageChange'))
       onSuccess?.(username)
       onClose()
     } else {
