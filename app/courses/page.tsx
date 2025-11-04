@@ -1,8 +1,9 @@
 "use client";
 
-import {useEffect, useState} from "react";
-import {useRouter} from "next/navigation";
+import {useEffect, useMemo, useState, Suspense} from "react";
+import {useRouter, useSearchParams} from "next/navigation";
 import styled from "@emotion/styled";
+import {getStateById, states} from "@/lib/courses";
 
 const CoursesContainer = styled.div`
   min-height: 100vh;
@@ -113,34 +114,47 @@ interface TeeTimeData {
   data?: any;
 }
 
-export default function CoursesPage() {
+function CoursesPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [teeTimes, setTeeTimes] = useState<Record<string, TeeTimeData>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // TODO: Move this to database or s3 bucket or some other persistent storage
-  const courses: Record<string, string> = {
-    bethpage:
-      "https://foreupsoftware.com/index.php/booking/19765/2431#teetimes",
-    // marine_park: "https://marineparkridepp.ezlinksgolf.com/index.html#/search",
-  };
+  const state = useMemo(() => {
+    const stateParam = searchParams?.get("state");
+    return getStateById(stateParam || "ny");
+  }, [searchParams]);
+
+  const courses: Record<string, string> = useMemo(() => {
+    const map: Record<string, string> = {};
+    const courseMap = state?.courses ?? states.ny.courses;
+    for (const [key, c] of Object.entries(courseMap)) {
+      map[key] = c.url;
+    }
+    return map;
+  }, [state]);
 
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isLoggedIn");
     if (!isLoggedIn) {
-      router.push("/login");
+      router.push("/?login=true");
     }
   }, [router]);
 
   const fetchTeeTime = async (courseName: string, courseUrl: string) => {
+    console.log("fetchTeeTime called", {courseName, courseUrl});
     setLoading((prev) => ({...prev, [courseName]: true}));
     setErrors((prev) => ({...prev, [courseName]: ""}));
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    console.log("API URL:", apiUrl);
 
     try {
-      const response = await fetch(`${apiUrl}/api/tee-times/${courseName}`, {
+      const requestUrl = `${apiUrl}/api/tee-times/${courseName}`;
+      console.log("Making request to:", requestUrl);
+
+      const response = await fetch(requestUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -148,16 +162,22 @@ export default function CoursesPage() {
         body: JSON.stringify({url: courseUrl}),
       });
 
+      console.log("Response status:", response.status);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Response error:", errorText);
         throw new Error(`Failed to fetch tee times: ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log("Tee time data received:", data);
       setTeeTimes((prev) => ({
         ...prev,
         [courseName]: {course: courseName, url: courseUrl, data},
       }));
     } catch (error) {
+      console.error("Error fetching tee times:", error);
       setErrors((prev) => ({
         ...prev,
         [courseName]:
@@ -173,18 +193,24 @@ export default function CoursesPage() {
       <Header>
         <HeaderContent>
           <Title>Available Courses</Title>
-          <BackButton onClick={() => router.push("/home")}>
-            Back to Home
-          </BackButton>
+          <BackButton onClick={() => router.push("/")}>Back to Home</BackButton>
         </HeaderContent>
       </Header>
       <Content>
+        {Object.entries(courses).length === 0 && (
+          <p>No courses available. Please check the state selection.</p>
+        )}
         {Object.entries(courses).map(([courseName, courseUrl]) => (
           <CourseCard key={courseName}>
             <CourseName>{courseName.replace("_", " ")}</CourseName>
             <TeeTimeButton
-              onClick={() => fetchTeeTime(courseName, courseUrl)}
+              onClick={(e) => {
+                e.preventDefault();
+                console.log("Button clicked for:", courseName);
+                fetchTeeTime(courseName, courseUrl);
+              }}
               disabled={loading[courseName]}
+              type="button"
             >
               {loading[courseName] ? "Loading..." : "Get Tee Times"}
             </TeeTimeButton>
@@ -203,5 +229,13 @@ export default function CoursesPage() {
         ))}
       </Content>
     </CoursesContainer>
+  );
+}
+
+export default function CoursesPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CoursesPageContent />
+    </Suspense>
   );
 }
