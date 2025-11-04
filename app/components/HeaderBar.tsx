@@ -47,23 +47,26 @@ export default function HeaderBar() {
     return localStorage.getItem('isLoggedIn') === 'true'
   })
 
-  const username = useMemo(() => {
+  const [username, setUsername] = useState<string>(() => {
     if (typeof window === 'undefined') return ''
     return localStorage.getItem('username') || ''
-  }, [isLoggedIn])
+  })
 
   // Sync auth state from localStorage on mount (handles SSR hydration refresh)
   useEffect(() => {
     const logged = localStorage.getItem('isLoggedIn') === 'true'
-    if (logged !== isLoggedIn) {
-      setIsLoggedIn(logged)
-    }
+    const user = localStorage.getItem('username') || ''
+    setIsLoggedIn(logged)
+    setUsername(user)
   }, [])
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === 'isLoggedIn') {
         setIsLoggedIn(localStorage.getItem('isLoggedIn') === 'true')
+      }
+      if (e.key === 'username') {
+        setUsername(localStorage.getItem('username') || '')
       }
     }
     window.addEventListener('storage', onStorage)
@@ -73,7 +76,9 @@ export default function HeaderBar() {
   const openLogin = useCallback(() => setIsOpen(true), [])
   const closeLogin = useCallback(() => setIsOpen(false), [])
   const onLoginSuccess = useCallback(() => {
+    const user = localStorage.getItem('username') || ''
     setIsLoggedIn(true)
+    setUsername(user)
     setIsOpen(false)
     // Dispatch custom event to notify other components
     window.dispatchEvent(new Event('localStorageChange'))
@@ -83,6 +88,7 @@ export default function HeaderBar() {
     localStorage.removeItem('isLoggedIn')
     localStorage.removeItem('username')
     setIsLoggedIn(false)
+    setUsername('')
     // Dispatch custom event to notify other components
     window.dispatchEvent(new Event('localStorageChange'))
   }, [])

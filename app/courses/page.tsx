@@ -1,6 +1,6 @@
 "use client";
 
-import {useEffect, useMemo, useState} from "react";
+import {useEffect, useMemo, useState, Suspense} from "react";
 import {useRouter, useSearchParams} from "next/navigation";
 import styled from "@emotion/styled";
 import {getStateById, states} from "@/lib/courses";
@@ -114,7 +114,7 @@ interface TeeTimeData {
   data?: any;
 }
 
-export default function CoursesPage() {
+function CoursesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [teeTimes, setTeeTimes] = useState<Record<string, TeeTimeData>>({});
@@ -138,7 +138,7 @@ export default function CoursesPage() {
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isLoggedIn");
     if (!isLoggedIn) {
-      router.push("/home?login=true");
+      router.push("/?login=true");
     }
   }, [router]);
 
@@ -229,5 +229,13 @@ export default function CoursesPage() {
         ))}
       </Content>
     </CoursesContainer>
+  );
+}
+
+export default function CoursesPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CoursesPageContent />
+    </Suspense>
   );
 }

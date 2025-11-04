@@ -1,7 +1,6 @@
 "use client";
 
-import {useCallback, useEffect, useMemo, useState} from "react";
-import {useRouter, useSearchParams} from "next/navigation";
+import {useEffect, useState, Suspense} from "react";
 import styled from "@emotion/styled";
 import Link from "next/link";
 import {states, type StateId} from "@/lib/courses";
@@ -47,9 +46,7 @@ const StateLink = styled(Link)`
   }
 `;
 
-export default function HomePage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+function HomePageContent() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("isLoggedIn") === "true";
@@ -120,5 +117,13 @@ export default function HomePage() {
         </WelcomeCard>
       </Content>
     </HomeContainer>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <HomePageContent />
+    </Suspense>
   );
 }
