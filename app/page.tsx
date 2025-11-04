@@ -11,6 +11,8 @@ export default function Home() {
     const isLoggedIn = localStorage.getItem("isLoggedIn");
     if (!isLoggedIn) {
       router.push("/login");
+    } else {
+      router.push("/home");
     }
   }, [router]);
 
