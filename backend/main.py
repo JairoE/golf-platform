@@ -250,8 +250,11 @@ async def scrape_courses(request: ScrapeCoursesRequest):
                 
                 # If no field_selectors provided, try to extract common patterns
                 if not request.field_selectors:
-                    # Try to find name in common tags
-                    name_elem = element.find(['h1', 'h2', 'h3', 'h4', '.name', '[class*="name"]'])
+                    # Try to find name in common tags (find() only accepts tag names)
+                    name_elem = element.find(['h1', 'h2', 'h3', 'h4'])
+                    # If not found, try CSS selectors using select_one()
+                    if not name_elem:
+                        name_elem = element.select_one('.name, [data-testid~="name"]')
                     if name_elem:
                         course_data.name = name_elem.get_text(strip=True)
                     
