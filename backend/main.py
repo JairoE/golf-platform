@@ -120,7 +120,7 @@ async def scrape_courses(request: ScrapeCoursesRequest):
             # Check if HTML contains the selector (likely a JS-rendered page)
             html_snippet = response.text[:2000] if len(response.text) > 2000 else response.text
             logger.info(f"HTML snippet (first 2000 chars): {html_snippet}")
-            logger.info(f"HTML contains 'facility-card': {'facility-card' in response.text}")
+            # logger.info(f"HTML contains 'facility-card': {'facility-card' in response.text}")  // update fo future debugging
             
             # Try to use Playwright for JavaScript-rendered pages
             try:
