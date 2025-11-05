@@ -143,19 +143,23 @@ async def scrape_courses(request: ScrapeCoursesRequest):
                     await page.route('**/*', handle_route)
                     
                     logger.info(f"Navigating to {request.url}...")
+                    # Navigate once with the most permissive wait strategy
+                    # If wait_until times out, the page may still be loading, so we'll rely on wait_for_selector later
                     try:
-                        # Try domcontentloaded first (faster, waits for DOM)
                         await page.goto(request.url, wait_until="domcontentloaded", timeout=60000)
                         logger.info("Page loaded (domcontentloaded)")
                     except Exception as e:
-                        logger.warning(f"domcontentloaded failed: {e}, trying load...")
-                        try:
-                            await page.goto(request.url, wait_until="load", timeout=60000)
-                            logger.info("Page loaded (load)")
-                        except Exception as e2:
-                            logger.warning(f"load failed: {e2}, trying without wait...")
-                            await page.goto(request.url, timeout=60000)
-                            logger.info("Page loaded (no wait)")
+                        # logger.warning(f"domcontentloaded failed: {e}, trying load...")
+                        # try:
+                        #     await page.goto(request.url, wait_until="load", timeout=60000)
+                        #     logger.info("Page loaded (load)")
+                        # except Exception as e2:
+                        #     logger.warning(f"load failed: {e2}, trying without wait...")
+                        #     await page.goto(request.url, timeout=60000)
+                        #     logger.info("Page loaded (no wait)")
+                        logger.warning(f"Navigation wait timed out: {e}, page may still be loading - will wait for selector")
+                        # Don't re-navigate - the page may have partially loaded
+                        # Continue and rely on wait_for_selector to handle dynamic content
                     
                     # Wait a bit for JavaScript to execute
                     logger.info("Waiting for JavaScript to execute...")
