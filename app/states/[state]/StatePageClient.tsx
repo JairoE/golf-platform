@@ -1,10 +1,11 @@
 "use client";
 
 import {useEffect, useState} from "react";
-import {useRouter} from "next/navigation";
+import {useRouter, useParams} from "next/navigation";
 import styled from "@emotion/styled";
+import {coursesByState, states} from "../../data/courses";
 
-const CoursesContainer = styled.div`
+const StateContainer = styled.div`
   min-height: 100vh;
   background: #f5f5f5;
   padding: 2rem;
@@ -18,7 +19,7 @@ const Header = styled.header`
 `;
 
 const HeaderContent = styled.div`
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
@@ -45,22 +46,62 @@ const BackButton = styled.button`
 `;
 
 const Content = styled.div`
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+
+  @media (max-width: 968px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const MapContainer = styled.div`
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  min-height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 1.125rem;
+`;
+
+const CoursesPanel = styled.div`
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+`;
+
+const CoursesTitle = styled.h2`
+  color: #333;
+  margin: 0 0 1.5rem 0;
 `;
 
 const CourseCard = styled.div`
-  background: white;
   padding: 1.5rem;
+  border: 1px solid #e0e0e0;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   margin-bottom: 1rem;
+  transition: box-shadow 0.2s;
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
 `;
 
-const CourseName = styled.h2`
+const CourseName = styled.h3`
   color: #333;
-  margin: 0 0 1rem 0;
+  margin: 0 0 0.5rem 0;
   text-transform: capitalize;
+  font-size: 1.25rem;
 `;
 
 const TeeTimeButton = styled.button`
@@ -71,7 +112,7 @@ const TeeTimeButton = styled.button`
   border-radius: 4px;
   cursor: pointer;
   font-size: 1rem;
-  margin-right: 1rem;
+  margin-top: 0.5rem;
 
   &:hover {
     background: #229954;
@@ -83,14 +124,14 @@ const TeeTimeButton = styled.button`
   }
 `;
 
-const LoadingMessage = styled.p`
-  color: #666;
-  font-style: italic;
-`;
-
 const ErrorMessage = styled.p`
   color: #e74c3c;
   margin-top: 0.5rem;
+`;
+
+const LoadingMessage = styled.p`
+  color: #666;
+  font-style: italic;
 `;
 
 const TeeTimeInfo = styled.div`
@@ -107,31 +148,42 @@ const TeeTimeText = styled.pre`
   font-size: 0.875rem;
 `;
 
+const NoCoursesMessage = styled.p`
+  color: #666;
+  font-style: italic;
+  text-align: center;
+  padding: 2rem;
+`;
+
 interface TeeTimeData {
   course: string;
   url: string;
   data?: any;
 }
 
-export default function CoursesPage() {
+export default function StatePageClient() {
   const router = useRouter();
+  const params = useParams();
+  const stateCode = params?.state as string;
+
   const [teeTimes, setTeeTimes] = useState<Record<string, TeeTimeData>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // TODO: Move this to database or s3 bucket or some other persistent storage
-  const courses: Record<string, string> = {
-    bethpage:
-      "https://foreupsoftware.com/index.php/booking/19765/2431#teetimes",
-    // marine_park: "https://marineparkridepp.ezlinksgolf.com/index.html#/search",
-  };
+  const state = states.find((s) => s.code === stateCode);
+  const courses = stateCode ? coursesByState[stateCode] || [] : [];
 
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isLoggedIn");
     if (!isLoggedIn) {
       router.push("/login");
+      return;
     }
-  }, [router]);
+
+    if (!state) {
+      router.push("/home");
+    }
+  }, [router, state]);
 
   const fetchTeeTime = async (courseName: string, courseUrl: string) => {
     setLoading((prev) => ({...prev, [courseName]: true}));
@@ -168,40 +220,57 @@ export default function CoursesPage() {
     }
   };
 
+  if (!state) {
+    return null;
+  }
+
   return (
-    <CoursesContainer>
+    <StateContainer>
       <Header>
         <HeaderContent>
-          <Title>Available Courses</Title>
+          <Title>{state.name} Golf Courses</Title>
           <BackButton onClick={() => router.push("/home")}>
             Back to Home
           </BackButton>
         </HeaderContent>
       </Header>
       <Content>
-        {Object.entries(courses).map(([courseName, courseUrl]) => (
-          <CourseCard key={courseName}>
-            <CourseName>{courseName.replace("_", " ")}</CourseName>
-            <TeeTimeButton
-              onClick={() => fetchTeeTime(courseName, courseUrl)}
-              disabled={loading[courseName]}
-            >
-              {loading[courseName] ? "Loading..." : "Get Tee Times"}
-            </TeeTimeButton>
-            {errors[courseName] && (
-              <ErrorMessage>{errors[courseName]}</ErrorMessage>
-            )}
-            {teeTimes[courseName]?.data && (
-              <TeeTimeInfo>
-                <h3>Tee Time Data:</h3>
-                <TeeTimeText>
-                  {JSON.stringify(teeTimes[courseName].data, null, 2)}
-                </TeeTimeText>
-              </TeeTimeInfo>
-            )}
-          </CourseCard>
-        ))}
+        <MapContainer>
+          <div>Map Placeholder</div>
+        </MapContainer>
+        <CoursesPanel>
+          <CoursesTitle>Available Courses</CoursesTitle>
+          {courses.length === 0 ? (
+            <NoCoursesMessage>
+              No courses available for {state.name} at this time.
+            </NoCoursesMessage>
+          ) : (
+            courses.map((course) => (
+              <CourseCard key={course.id}>
+                <CourseName>{course.name}</CourseName>
+                <TeeTimeButton
+                  onClick={() => fetchTeeTime(course.id, course.url)}
+                  disabled={loading[course.id]}
+                >
+                  {loading[course.id] ? "Loading..." : "Get Tee Times"}
+                </TeeTimeButton>
+                {errors[course.id] && (
+                  <ErrorMessage>{errors[course.id]}</ErrorMessage>
+                )}
+                {teeTimes[course.id]?.data && (
+                  <TeeTimeInfo>
+                    <h3>Tee Time Data:</h3>
+                    <TeeTimeText>
+                      {JSON.stringify(teeTimes[course.id].data, null, 2)}
+                    </TeeTimeText>
+                  </TeeTimeInfo>
+                )}
+              </CourseCard>
+            ))
+          )}
+        </CoursesPanel>
       </Content>
-    </CoursesContainer>
+    </StateContainer>
   );
 }
+
