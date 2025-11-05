@@ -7,6 +7,12 @@ export const courses: Course[] = [
     url: "https://foreupsoftware.com/index.php/booking/19765/2431#teetimes",
     state: "NY",
   },
+  {
+    id: "nyc",
+    name: "NYC",
+    url: "https://golf-nyc.book.teeitup.com/search",
+    state: "NY",
+  },
   // Add more courses here as needed
 ];
 
