@@ -129,69 +129,78 @@ async def scrape_courses(request: ScrapeCoursesRequest):
                 
                 async with async_playwright() as p:
                     logger.info("Launching browser...")
-                    browser = await p.chromium.launch(headless=True)
-                    page = await browser.new_page()
-                    
-                    # Disable images and stylesheets for faster loading
-                    async def handle_route(route):
-                        resource_type = route.request.resource_type
-                        if resource_type in ['image', 'stylesheet', 'font']:
-                            await route.abort()
-                        else:
-                            await route.continue_()
-                    
-                    await page.route('**/*', handle_route)
-                    
-                    logger.info(f"Navigating to {request.url}...")
-                    # Navigate once with the most permissive wait strategy
-                    # If wait_until times out, the page may still be loading, so we'll rely on wait_for_selector later
+                    browser = None
                     try:
-                        await page.goto(request.url, wait_until="domcontentloaded", timeout=60000)
-                        logger.info("Page loaded (domcontentloaded)")
-                    except Exception as e:
-                        # logger.warning(f"domcontentloaded failed: {e}, trying load...")
-                        # try:
-                        #     await page.goto(request.url, wait_until="load", timeout=60000)
-                        #     logger.info("Page loaded (load)")
-                        # except Exception as e2:
-                        #     logger.warning(f"load failed: {e2}, trying without wait...")
-                        #     await page.goto(request.url, timeout=60000)
-                        #     logger.info("Page loaded (no wait)")
-                        logger.warning(f"Navigation wait timed out: {e}, page may still be loading - will wait for selector")
-                        # Don't re-navigate - the page may have partially loaded
-                        # Continue and rely on wait_for_selector to handle dynamic content
-                    
-                    # Wait a bit for JavaScript to execute
-                    logger.info("Waiting for JavaScript to execute...")
-                    await page.wait_for_timeout(3000)  # 3 seconds
-                    
-                    # Wait for elements to appear
-                    logger.info(f"Waiting for selector: {request.selector}")
-                    try:
-                        await page.wait_for_selector(request.selector, timeout=10000)
-                        logger.info("Selector found!")
-                    except Exception as e:
-                        logger.warning(f"Selector {request.selector} not found after 10 seconds: {e}")
-                        # Check what's actually on the page
-                        body_text = await page.evaluate("() => document.body.innerText")
-                        logger.info(f"Page body text (first 500 chars): {body_text[:500]}")
-                        # Check for any elements with data-testid
-                        test_ids = await page.evaluate("""
-                            () => {
-                                const elements = document.querySelectorAll('[data-testid]');
-                                return Array.from(elements).slice(0, 10).map(el => el.getAttribute('data-testid'));
-                            }
-                        """)
-                        logger.info(f"Found data-testid attributes: {test_ids}")
-                    
-                    # Get the rendered HTML
-                    logger.info("Getting page content...")
-                    html_content = await page.content()
-                    logger.info(f"Page content length: {len(html_content)}")
-                    await browser.close()
-                    
-                    soup = BeautifulSoup(html_content, 'lxml')
-                    logger.info("Successfully parsed HTML with Playwright")
+                        browser = await p.chromium.launch(headless=True)
+                        page = await browser.new_page()
+                        
+                        # Disable images and stylesheets for faster loading
+                        async def handle_route(route):
+                            resource_type = route.request.resource_type
+                            if resource_type in ['image', 'stylesheet', 'font']:
+                                await route.abort()
+                            else:
+                                await route.continue_()
+                        
+                        await page.route('**/*', handle_route)
+                        
+                        logger.info(f"Navigating to {request.url}...")
+                        # Navigate once with the most permissive wait strategy
+                        # If wait_until times out, the page may still be loading, so we'll rely on wait_for_selector later
+                        try:
+                            await page.goto(request.url, wait_until="domcontentloaded", timeout=60000)
+                            logger.info("Page loaded (domcontentloaded)")
+                        except Exception as e:
+                            # logger.warning(f"domcontentloaded failed: {e}, trying load...")
+                            # try:
+                            #     await page.goto(request.url, wait_until="load", timeout=60000)
+                            #     logger.info("Page loaded (load)")
+                            # except Exception as e2:
+                            #     logger.warning(f"load failed: {e2}, trying without wait...")
+                            #     await page.goto(request.url, timeout=60000)
+                            #     logger.info("Page loaded (no wait)")
+                            logger.warning(f"Navigation wait timed out: {e}, page may still be loading - will wait for selector")
+                            # Don't re-navigate - the page may have partially loaded
+                            # Continue and rely on wait_for_selector to handle dynamic content
+                        
+                        # Wait a bit for JavaScript to execute
+                        logger.info("Waiting for JavaScript to execute...")
+                        await page.wait_for_timeout(3000)  # 3 seconds
+                        
+                        # Wait for elements to appear
+                        logger.info(f"Waiting for selector: {request.selector}")
+                        try:
+                            await page.wait_for_selector(request.selector, timeout=10000)
+                            logger.info("Selector found!")
+                        except Exception as e:
+                            logger.warning(f"Selector {request.selector} not found after 10 seconds: {e}")
+                            # Check what's actually on the page
+                            body_text = await page.evaluate("() => document.body.innerText")
+                            logger.info(f"Page body text (first 500 chars): {body_text[:500]}")
+                            # Check for any elements with data-testid
+                            test_ids = await page.evaluate("""
+                                () => {
+                                    const elements = document.querySelectorAll('[data-testid]');
+                                    return Array.from(elements).slice(0, 10).map(el => el.getAttribute('data-testid'));
+                                }
+                            """)
+                            logger.info(f"Found data-testid attributes: {test_ids}")
+                        
+                        # Get the rendered HTML
+                        logger.info("Getting page content...")
+                        html_content = await page.content()
+                        logger.info(f"Page content length: {len(html_content)}")
+                        
+                        soup = BeautifulSoup(html_content, 'lxml')
+                        logger.info("Successfully parsed HTML with Playwright")
+                    finally:
+                        # Ensure browser is always closed, even if an exception occurs
+                        if browser is not None:
+                            try:
+                                await browser.close()
+                                logger.info("Browser closed successfully")
+                            except Exception as e:
+                                logger.warning(f"Error closing browser: {e}")
             except ImportError:
                 logger.warning("Playwright not installed, falling back to static HTML parsing")
                 soup = BeautifulSoup(response.text, 'lxml')
