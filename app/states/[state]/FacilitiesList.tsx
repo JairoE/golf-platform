@@ -117,7 +117,6 @@ export default function FacilitiesList({
         }
 
         const data = await response.json();
-        debugger;
         setFacilities(Array.isArray(data) ? data : [data]);
       } catch (err) {
         setError(

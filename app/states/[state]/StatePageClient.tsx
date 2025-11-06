@@ -240,8 +240,6 @@ export default function StatePageClient() {
         ...prev,
         [course.id]: {course: course.id, url: course.url, data},
       }));
-
-      setViewState({type: "courses"});
     } catch (error) {
       setErrors((prev) => ({
         ...prev,
@@ -317,16 +315,30 @@ export default function StatePageClient() {
             </>
           )}
           {viewState.type === "teeTimeForm" && (
-            <TeeTimeForm
-              courseId={viewState.course.id}
-              courseUrl={viewState.course.url}
-              onSubmit={(formData) =>
-                handleRequestTeeTime(viewState.course, formData)
-              }
-              onCancel={() => setViewState({type: "courses"})}
-              loading={loading[viewState.course.id] || false}
-              error={errors[viewState.course.id]}
-            />
+            <>
+              <TeeTimeForm
+                courseId={viewState.course.id}
+                courseUrl={viewState.course.url}
+                onSubmit={(formData) =>
+                  handleRequestTeeTime(viewState.course, formData)
+                }
+                onCancel={() => setViewState({type: "courses"})}
+                loading={loading[viewState.course.id] || false}
+                error={errors[viewState.course.id]}
+              />
+              {teeTimes[viewState.course.id]?.data && (
+                <TeeTimeInfo>
+                  <h3>Tee Time Data:</h3>
+                  <TeeTimeText>
+                    {JSON.stringify(
+                      teeTimes[viewState.course.id].data,
+                      null,
+                      2
+                    )}
+                  </TeeTimeText>
+                </TeeTimeInfo>
+              )}
+            </>
           )}
           {viewState.type === "facilities" && (
             <FacilitiesList
