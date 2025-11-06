@@ -1,7 +1,8 @@
 "use client";
 
-import {useEffect, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import styled from "@emotion/styled";
+import {htmlStringToJson} from "../../utils/htmlToJson";
 
 const FacilitiesContainer = styled.div`
   padding: 1.5rem;
@@ -69,10 +70,22 @@ const FacilityInfo = styled.p`
   font-size: 0.875rem;
 `;
 
+const FacilityJson = styled.pre`
+  color: #444;
+  background: #f5f5f5;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  overflow-x: auto;
+`;
+
 interface Facility {
   id?: string;
   name?: string;
   url?: string;
+  raw_html?: string;
+  htmlJson?: unknown;
   [key: string]: any;
 }
 
@@ -92,6 +105,17 @@ export default function FacilitiesList({
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
+
+  const facilitiesWithStructure = useMemo(
+    () =>
+      facilities.map((facility) => ({
+        ...facility,
+        htmlJson: facility.raw_html
+          ? htmlStringToJson(facility.raw_html)
+          : undefined,
+      })),
+    [facilities]
+  );
 
   useEffect(() => {
     const fetchFacilities = async () => {
@@ -136,20 +160,20 @@ export default function FacilitiesList({
       <FacilitiesTitle>Available Facilities</FacilitiesTitle>
       {loading && <LoadingMessage>Loading facilities...</LoadingMessage>}
       {error && <ErrorMessage>{error}</ErrorMessage>}
-      {!loading && !error && facilities.length === 0 && (
+      {!loading && !error && facilitiesWithStructure.length === 0 && (
         <ErrorMessage>No facilities found.</ErrorMessage>
       )}
-      {!loading && !error && facilities.length > 0 && (
+      {!loading && !error && facilitiesWithStructure.length > 0 && (
         <FacilitiesGrid>
-          {facilities.map((facility, index) => (
+          {facilitiesWithStructure.map((facility, index) => (
             <FacilityCard key={facility.id || facility.url || index}>
               <FacilityName>
                 {facility.name || `Facility ${index + 1}`}
               </FacilityName>
-              {facility.raw_html && (
-                <FacilityInfo
-                  dangerouslySetInnerHTML={{__html: facility.raw_html}}
-                />
+              {facility.htmlJson && facility.htmlJson.length > 0 && (
+                <FacilityJson>
+                  {JSON.stringify(facility.htmlJson, null, 2)}
+                </FacilityJson>
               )}
               {facility.url && (
                 <FacilityInfo>
