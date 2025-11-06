@@ -117,7 +117,7 @@ export default function FacilitiesList({
         }
 
         const data = await response.json();
-        setFacilities(Array.isArray(data) ? data : [data]);
+        setFacilities(Array.isArray(data.courses) ? data.courses : []);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to fetch facilities"
@@ -146,6 +146,11 @@ export default function FacilitiesList({
               <FacilityName>
                 {facility.name || `Facility ${index + 1}`}
               </FacilityName>
+              {facility.raw_html && (
+                <FacilityInfo
+                  dangerouslySetInnerHTML={{__html: facility.raw_html}}
+                />
+              )}
               {facility.url && (
                 <FacilityInfo>
                   <a
