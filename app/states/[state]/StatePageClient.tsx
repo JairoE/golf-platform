@@ -4,6 +4,9 @@ import {useEffect, useState} from "react";
 import {useRouter, useParams} from "next/navigation";
 import styled from "@emotion/styled";
 import {coursesByState, states} from "../../data/courses";
+import TeeTimeForm from "./TeeTimeForm";
+import FacilitiesList from "./FacilitiesList";
+import {Course} from "../../types/course";
 
 const StateContainer = styled.div`
   min-height: 100vh;
@@ -104,7 +107,7 @@ const CourseName = styled.h3`
   font-size: 1.25rem;
 `;
 
-const TeeTimeButton = styled.button`
+const ActionButton = styled.button`
   padding: 0.75rem 1.5rem;
   background: #27ae60;
   color: white;
@@ -121,6 +124,14 @@ const TeeTimeButton = styled.button`
   &:disabled {
     background: #ccc;
     cursor: not-allowed;
+  }
+`;
+
+const FacilitiesButton = styled(ActionButton)`
+  background: #667eea;
+
+  &:hover {
+    background: #5568d3;
   }
 `;
 
@@ -155,6 +166,11 @@ const NoCoursesMessage = styled.p`
   padding: 2rem;
 `;
 
+type ViewState =
+  | {type: "courses"}
+  | {type: "teeTimeForm"; course: Course}
+  | {type: "facilities"; course: Course};
+
 interface TeeTimeData {
   course: string;
   url: string;
@@ -166,6 +182,7 @@ export default function StatePageClient() {
   const params = useParams();
   const stateCode = params?.state as string;
 
+  const [viewState, setViewState] = useState<ViewState>({type: "courses"});
   const [teeTimes, setTeeTimes] = useState<Record<string, TeeTimeData>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -185,19 +202,33 @@ export default function StatePageClient() {
     }
   }, [router, state]);
 
-  const fetchTeeTime = async (courseName: string, courseUrl: string) => {
-    setLoading((prev) => ({...prev, [courseName]: true}));
-    setErrors((prev) => ({...prev, [courseName]: ""}));
+  const handleRequestTeeTime = async (
+    course: Course,
+    formData: {
+      start: string;
+      end: string;
+      date: string;
+      deadline: string;
+    }
+  ) => {
+    setLoading((prev) => ({...prev, [course.id]: true}));
+    setErrors((prev) => ({...prev, [course.id]: ""}));
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
     try {
-      const response = await fetch(`${apiUrl}/api/tee-times/${courseName}`, {
+      const response = await fetch(`${apiUrl}/api/tee-times/${course.id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({url: courseUrl}),
+        body: JSON.stringify({
+          url: course.url,
+          start: formData.start,
+          end: formData.end,
+          date: formData.date,
+          deadline: formData.deadline,
+        }),
       });
 
       if (!response.ok) {
@@ -207,16 +238,18 @@ export default function StatePageClient() {
       const data = await response.json();
       setTeeTimes((prev) => ({
         ...prev,
-        [courseName]: {course: courseName, url: courseUrl, data},
+        [course.id]: {course: course.id, url: course.url, data},
       }));
+
+      setViewState({type: "courses"});
     } catch (error) {
       setErrors((prev) => ({
         ...prev,
-        [courseName]:
+        [course.id]:
           error instanceof Error ? error.message : "Failed to fetch tee times",
       }));
     } finally {
-      setLoading((prev) => ({...prev, [courseName]: false}));
+      setLoading((prev) => ({...prev, [course.id]: false}));
     }
   };
 
@@ -240,37 +273,71 @@ export default function StatePageClient() {
         </MapContainer>
         <CoursesPanel>
           <CoursesTitle>Available Courses</CoursesTitle>
-          {courses.length === 0 ? (
-            <NoCoursesMessage>
-              No courses available for {state.name} at this time.
-            </NoCoursesMessage>
-          ) : (
-            courses.map((course) => (
-              <CourseCard key={course.id}>
-                <CourseName>{course.name}</CourseName>
-                <TeeTimeButton
-                  onClick={() => fetchTeeTime(course.id, course.url)}
-                  disabled={loading[course.id]}
-                >
-                  {loading[course.id] ? "Loading..." : "Get Tee Times"}
-                </TeeTimeButton>
-                {errors[course.id] && (
-                  <ErrorMessage>{errors[course.id]}</ErrorMessage>
-                )}
-                {teeTimes[course.id]?.data && (
-                  <TeeTimeInfo>
-                    <h3>Tee Time Data:</h3>
-                    <TeeTimeText>
-                      {JSON.stringify(teeTimes[course.id].data, null, 2)}
-                    </TeeTimeText>
-                  </TeeTimeInfo>
-                )}
-              </CourseCard>
-            ))
+          {viewState.type === "courses" && (
+            <>
+              {courses.length === 0 ? (
+                <NoCoursesMessage>
+                  No courses available for {state.name} at this time.
+                </NoCoursesMessage>
+              ) : (
+                courses.map((course) => (
+                  <CourseCard key={course.id}>
+                    <CourseName>{course.name}</CourseName>
+                    {course.hasMultipleFacilities ? (
+                      <FacilitiesButton
+                        onClick={() =>
+                          setViewState({type: "facilities", course})
+                        }
+                      >
+                        View All Facilities
+                      </FacilitiesButton>
+                    ) : (
+                      <ActionButton
+                        onClick={() =>
+                          setViewState({type: "teeTimeForm", course})
+                        }
+                      >
+                        Request Tee Time
+                      </ActionButton>
+                    )}
+                    {errors[course.id] && (
+                      <ErrorMessage>{errors[course.id]}</ErrorMessage>
+                    )}
+                    {teeTimes[course.id]?.data && (
+                      <TeeTimeInfo>
+                        <h3>Tee Time Data:</h3>
+                        <TeeTimeText>
+                          {JSON.stringify(teeTimes[course.id].data, null, 2)}
+                        </TeeTimeText>
+                      </TeeTimeInfo>
+                    )}
+                  </CourseCard>
+                ))
+              )}
+            </>
+          )}
+          {viewState.type === "teeTimeForm" && (
+            <TeeTimeForm
+              courseId={viewState.course.id}
+              courseUrl={viewState.course.url}
+              onSubmit={(formData) =>
+                handleRequestTeeTime(viewState.course, formData)
+              }
+              onCancel={() => setViewState({type: "courses"})}
+              loading={loading[viewState.course.id] || false}
+              error={errors[viewState.course.id]}
+            />
+          )}
+          {viewState.type === "facilities" && (
+            <FacilitiesList
+              courseId={viewState.course.id}
+              courseUrl={viewState.course.url}
+              selector={viewState.course.selector}
+              onBack={() => setViewState({type: "courses"})}
+            />
           )}
         </CoursesPanel>
       </Content>
     </StateContainer>
   );
 }
-

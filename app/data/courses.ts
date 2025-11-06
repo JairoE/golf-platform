@@ -3,9 +3,25 @@ import {Course, CoursesByState} from "../types/course";
 export const courses: Course[] = [
   {
     id: "bethpage",
-    name: "Bethpage",
+    name: "Bethpage State Park Golf Courses",
     url: "https://foreupsoftware.com/index.php/booking/19765/2431#teetimes",
     state: "NY",
+    hasMultipleFacilities: false,
+  },
+  {
+    id: "nyc",
+    name: "Golf NYC Courses",
+    url: "https://golf-nyc.book.teeitup.com/search",
+    state: "NY",
+    hasMultipleFacilities: true,
+    selector: "[data-testid^='facility-card-']",
+  },
+  {
+    id: "marine_park",
+    name: "Marine Park Golf Course",
+    url: "https://marineparkridepp.ezlinksgolf.com/index.html#/search",
+    state: "NY",
+    hasMultipleFacilities: true,
   },
   // Add more courses here as needed
 ];
