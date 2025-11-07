@@ -3,6 +3,8 @@ export interface Course {
   name: string;
   url: string;
   state: string;
+  hasMultipleFacilities: boolean;
+  selector?: string;
 }
 
 export interface State {
