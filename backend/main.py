@@ -145,7 +145,11 @@ async def scrape_courses(request: ScrapeCoursesRequest):
                     logger.info("Launching browser...")
                     browser = None
                     try:
-                        browser = await p.chromium.launch(headless=True)
+                        headless = os.getenv("HEADLESS", "")
+                        headless_flag = headless.strip().lower() in {"1", "true", "yes"}
+                        logger.info(f"Headless flag: {headless_flag}")
+                        browser = await p.chromium.launch(headless=headless_flag)
+                        
                         page = await browser.new_page()
                         
                         # Disable images and stylesheets for faster loading
