@@ -15,6 +15,18 @@ export const courses: Course[] = [
     state: "NY",
     hasMultipleFacilities: true,
     selector: "[data-testid^='facility-card-']",
+    dataSelectors: [
+      {
+        attributes: {
+          "data-testid": "-name",
+        },
+      },
+      {
+        attributes: {
+          "data-testid": "-address",
+        },
+      },
+    ],
   },
   {
     id: "marine_park",

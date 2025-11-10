@@ -1,8 +1,13 @@
 "use client";
 
-import {useEffect, useMemo, useState} from "react";
+import {createElement, useEffect, useMemo, useState} from "react";
 import styled from "@emotion/styled";
-import {htmlStringToJson} from "../../utils/htmlToJson";
+import {
+  getElementsFromHtmlNodeJsons,
+  HtmlNodeJson,
+  htmlStringToJson,
+} from "../../utils/htmlToJson";
+import {Course} from "../../types/course";
 
 const FacilitiesContainer = styled.div`
   padding: 1.5rem;
@@ -85,37 +90,55 @@ interface Facility {
   name?: string;
   url?: string;
   raw_html?: string;
-  htmlJson?: unknown;
-  [key: string]: any;
+  htmlJson?: HtmlNodeJson[];
+  elements?: HtmlNodeJson[];
 }
 
 interface FacilitiesListProps {
-  courseId: string;
-  courseUrl: string;
-  selector?: string;
+  course: Course;
   onBack: () => void;
 }
 
-export default function FacilitiesList({
-  courseId,
-  courseUrl,
-  selector,
-  onBack,
-}: FacilitiesListProps) {
+export default function FacilitiesList({course, onBack}: FacilitiesListProps) {
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
 
-  const facilitiesWithStructure = useMemo(
-    () =>
-      facilities.map((facility) => ({
+  const {url: courseUrl, selector, name: courseName, dataSelectors} = course;
+
+  const facilitiesWithStructure = useMemo(() => {
+    const f = facilities.map((facility) => ({
+      ...facility,
+      id: facility?.id?.split("-").pop(),
+      htmlJson: facility.raw_html
+        ? htmlStringToJson(facility.raw_html)
+        : undefined,
+    }));
+
+    if (!dataSelectors) {
+      return f;
+    }
+
+    const fWithElements = f.map((facility) => {
+      const facilitySelector = dataSelectors?.map((selector) => ({
+        tag: selector?.tag,
+        attributes: {
+          ...selector.attributes,
+          "data-testid": `facility-${facility.id}${selector?.attributes?.["data-testid"]}`,
+        },
+      }));
+
+      return {
         ...facility,
-        htmlJson: facility.raw_html
-          ? htmlStringToJson(facility.raw_html)
-          : undefined,
-      })),
-    [facilities]
-  );
+        elements: getElementsFromHtmlNodeJsons(
+          facility.htmlJson ?? [],
+          facilitySelector
+        ),
+      };
+    });
+
+    return fWithElements;
+  }, [facilities, dataSelectors]);
 
   useEffect(() => {
     const fetchFacilities = async () => {
@@ -170,22 +193,43 @@ export default function FacilitiesList({
               <FacilityName>
                 {facility.name || `Facility ${index + 1}`}
               </FacilityName>
-              {facility.htmlJson && facility.htmlJson.length > 0 && (
+              {/* {facility.htmlJson && facility.htmlJson.length > 0 && (
                 <FacilityJson>
                   {JSON.stringify(facility.htmlJson, null, 2)}
                 </FacilityJson>
-              )}
-              {facility.url && (
-                <FacilityInfo>
-                  <a
-                    href={facility.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    View Details
-                  </a>
-                </FacilityInfo>
-              )}
+              )} */}
+              {facility.elements &&
+                facility.elements.length > 0 &&
+                facility.elements.map((element, elementIndex) => {
+                  if (element.type === "text") {
+                    return (
+                      <span
+                        key={`${
+                          facility.id || facility.url || index
+                        }-text-${elementIndex}`}
+                      >
+                        {element.text ?? ""}
+                      </span>
+                    );
+                  }
+
+                  const tagName = (element.type ??
+                    "div") as keyof JSX.IntrinsicElements;
+                  const key =
+                    element.attributes?.["data-testid"] ??
+                    `${
+                      facility.id || facility.url || index
+                    }-el-${elementIndex}`;
+
+                  return createElement(
+                    tagName,
+                    {
+                      key,
+                      ...element.attributes,
+                    },
+                    element.text ?? null
+                  );
+                })}
             </FacilityCard>
           ))}
         </FacilitiesGrid>

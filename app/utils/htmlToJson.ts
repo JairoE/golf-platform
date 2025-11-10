@@ -5,6 +5,11 @@ export interface HtmlNodeJson {
   text?: string;
 }
 
+export interface HtmlSelector {
+  tag?: string;
+  attributes?: Record<string, string>;
+}
+
 const nodeToJson = (node: ChildNode): HtmlNodeJson | null => {
   if (node.nodeType === Node.TEXT_NODE) {
     const text = node.textContent?.trim() ?? "";
@@ -27,9 +32,10 @@ const nodeToJson = (node: ChildNode): HtmlNodeJson | null => {
       type: element.tagName.toLowerCase(),
       attributes: Object.keys(attributes).length ? attributes : undefined,
       children: children.length ? children : undefined,
-      text: element.childElementCount === 0
-        ? element.textContent?.trim() || undefined
-        : undefined,
+      text:
+        element.childElementCount === 0
+          ? element.textContent?.trim() || undefined
+          : undefined,
     };
   }
 
@@ -49,3 +55,51 @@ export const htmlStringToJson = (html: string): HtmlNodeJson[] => {
     .filter((node): node is HtmlNodeJson => node !== null);
 };
 
+const matchesSelector = (
+  node: HtmlNodeJson,
+  selector: HtmlSelector
+): boolean => {
+  if (selector.tag && node.type !== selector.tag.toLowerCase()) {
+    return false;
+  }
+
+  if (selector.attributes) {
+    const attrs = node.attributes ?? {};
+    return Object.entries(selector.attributes).every(
+      ([key, value]) => attrs[key] === value
+    );
+  }
+
+  return true;
+};
+
+export const getElementsFromHtmlNodeJson = (
+  htmlNodeJson: HtmlNodeJson,
+  selectors: HtmlSelector[] = []
+): HtmlNodeJson[] => {
+  if (selectors.length === 0) {
+    return [];
+  }
+
+  const matched =
+    selectors.some((selector) => matchesSelector(htmlNodeJson, selector)) &&
+    htmlNodeJson.type !== "text"
+      ? [htmlNodeJson]
+      : [];
+
+  const childMatches =
+    htmlNodeJson.children?.flatMap((child) =>
+      getElementsFromHtmlNodeJson(child, selectors)
+    ) ?? [];
+
+  return [...matched, ...childMatches];
+};
+
+export const getElementsFromHtmlNodeJsons = (
+  htmlNodeJsons: HtmlNodeJson[],
+  selectors: HtmlSelector[] = []
+): HtmlNodeJson[] => {
+  return htmlNodeJsons.flatMap((htmlNodeJson) =>
+    getElementsFromHtmlNodeJson(htmlNodeJson, selectors)
+  );
+};

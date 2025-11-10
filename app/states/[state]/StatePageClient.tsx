@@ -342,9 +342,7 @@ export default function StatePageClient() {
           )}
           {viewState.type === "facilities" && (
             <FacilitiesList
-              courseId={viewState.course.id}
-              courseUrl={viewState.course.url}
-              selector={viewState.course.selector}
+              course={viewState.course}
               onBack={() => setViewState({type: "courses"})}
             />
           )}

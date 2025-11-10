@@ -1,3 +1,4 @@
+import {HtmlSelector} from "../utils/htmlToJson";
 export interface Course {
   id: string;
   name: string;
@@ -5,6 +6,7 @@ export interface Course {
   state: string;
   hasMultipleFacilities: boolean;
   selector?: string;
+  dataSelectors?: HtmlSelector[];
 }
 
 export interface State {
