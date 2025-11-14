@@ -23,6 +23,12 @@ export const courses: Course[] = [
     state: "NY",
     hasMultipleFacilities: true,
   },
+  {
+    id: "nyc",
+    name: "NYC",
+    url: "https://golf-nyc.book.teeitup.com/search",
+    state: "NY",
+  },
   // Add more courses here as needed
 ];
 
